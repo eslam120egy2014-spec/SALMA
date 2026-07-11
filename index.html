@@ -30,7 +30,11 @@
 }
 *{ -webkit-tap-highlight-color: transparent; }
 html,body{ background:var(--bg); }
-body{ color:var(--ink); font-family:'Cairo',sans-serif; }
+body{
+  color:var(--ink); font-family:'Cairo',sans-serif;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
 .mono{ font-family:'JetBrains Mono','Cairo',monospace; font-variant-numeric: tabular-nums; letter-spacing:-0.02em; }
 .no-scrollbar::-webkit-scrollbar{ display:none; }
 .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
@@ -94,13 +98,22 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
 }
 .ledger-card::before{
   content:'';
-  position:absolute; top:0; bottom:0; right:0.85rem;
+  position:absolute; top:0; bottom:0; right:0;
   width:1px;
   background: var(--margin);
   opacity:0.3;
   z-index:0;
 }
 .ledger-card > *{ position:relative; z-index:1; }
+.ledger-seal{
+  position:absolute; left:1.1rem; bottom:1rem;
+  width:5.2rem; height:5.2rem; border-radius:9999px;
+  border:2px dashed var(--brass-dim);
+  opacity:0.16; transform: rotate(-14deg);
+  display:flex; align-items:center; justify-content:center;
+  z-index:0; pointer-events:none;
+}
+.ledger-seal span{ font-size:0.62rem; font-weight:800; letter-spacing:0.08em; color:var(--brass); text-align:center; line-height:1.3; }
 .card-swap{ animation: cardSwap .38s cubic-bezier(.16,1,.3,1) both; }
 @keyframes cardSwap{ from{ opacity:0; transform: translateY(5px) scale(0.994);} to{ opacity:1; transform:translateY(0) scale(1);} }
 .stamp{
@@ -227,9 +240,10 @@ button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-
     <header class="flex justify-between items-center px-6 pt-6 pb-3 stagger-in" style="animation-delay:.02s">
       <div>
         <h1 class="text-2xl font-800 font-extrabold" style="color:var(--ink)">محفظتي</h1>
+        <p id="todayDate" class="text-xs mt-0.5 mono" style="color:var(--ink-faint)"></p>
       </div>
       <button onclick="openModal('newWalletModal')" class="stamp icon-btn" title="محفظة جديدة">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
       </button>
     </header>
 
@@ -254,6 +268,7 @@ button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-
     <div id="walletView" class="hidden flex-1 flex flex-col px-6">
 
       <div id="ledgerCard" class="ledger-card p-6 mb-6 stagger-in" style="animation-delay:.12s">
+        <div class="ledger-seal"><span>محفظتي<br>موثّق</span></div>
         <div class="flex justify-between items-start mb-1">
           <div class="flex items-center gap-3">
             <div id="walletStamp" class="stamp text-base">م</div>
@@ -427,6 +442,8 @@ async function loadData(){
   }
   document.getElementById('loadingState').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
+  const dateEl = document.getElementById('todayDate');
+  if(dateEl){ dateEl.textContent = new Date().toLocaleDateString('ar-EG', { weekday:'long', day:'numeric', month:'long' }); }
   updateUI();
 }
 
@@ -688,7 +705,11 @@ function updateUI(){
       li.dataset.id = t.id;
       li.innerHTML = `
         <div class="flex items-center gap-3 min-w-0">
-          <span class="text-xs w-5 shrink-0" style="color:var(--ink-faint)">${w.transactions.length - idx}</span>
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background:${t.type==='expense'?'var(--crimson-soft)':'var(--emerald-soft)'}; color:${t.type==='expense'?'var(--crimson)':'var(--emerald)'}">
+            ${t.type==='expense'
+              ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>'
+              : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>'}
+          </div>
           <div class="min-w-0">
             <p class="font-bold text-sm truncate" style="color:var(--ink)">${t.desc}</p>
             <p class="text-[11px]" style="color:var(--ink-faint)">${dateStr}</p>
