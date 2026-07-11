@@ -1,249 +1,710 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>محفظتي</title>
-    <!-- خط كاهيرو -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <!-- مكتبة Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- مكتبة html2pdf لتصدير ملفات PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Cairo', 'sans-serif'] },
-                    colors: {
-                        dark: '#0B0F19',
-                        card: '#151C2C',
-                        gold: { DEFAULT: '#D4AF37', light: '#F3E5AB', dark: '#AA8C2C' }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body { background-color: #0B0F19; color: #ffffff; -webkit-tap-highlight-color: transparent; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* تأثيرات النوافذ المنبثقة */
-        .modal-enter { opacity: 0; transform: scale(0.95) translateY(10px); }
-        .modal-enter-active { opacity: 1; transform: scale(1) translateY(0); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .modal-exit { opacity: 1; transform: scale(1) translateY(0); }
-        .modal-exit-active { opacity: 0; transform: scale(0.95) translateY(10px); transition: all 0.2s ease-in; }
-        
-        .overlay-enter { opacity: 0; }
-        .overlay-enter-active { opacity: 1; transition: opacity 0.3s ease-out; }
-        .overlay-exit { opacity: 1; }
-        .overlay-exit-active { opacity: 0; transition: opacity 0.2s ease-in; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>محفظتي — الدفتر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-        .glass-card {
-            background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(212, 175, 55, 0.2);
-            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5);
-        }
-    </style>
+<style>
+:root{
+  --bg:#11151c;
+  --paper:#1a212b;
+  --paper-raised:#202836;
+  --line:rgba(255,255,255,0.055);
+  --line-strong:rgba(255,255,255,0.09);
+  --margin:#a8503d;
+  --ink:#ece9e2;
+  --ink-dim:#8b93a3;
+  --ink-faint:#5b6373;
+  --emerald:#4b9c7c;
+  --emerald-soft:rgba(75,156,124,0.14);
+  --crimson:#b1454b;
+  --crimson-soft:rgba(177,69,75,0.14);
+  --brass:#c19a5e;
+  --brass-soft:rgba(193,154,94,0.14);
+  --brass-dim:#8a713f;
+}
+*{ -webkit-tap-highlight-color: transparent; }
+html,body{ background:var(--bg); }
+body{ color:var(--ink); font-family:'Cairo',sans-serif; }
+.mono{ font-family:'JetBrains Mono','Cairo',monospace; font-variant-numeric: tabular-nums; letter-spacing:-0.02em; }
+.no-scrollbar::-webkit-scrollbar{ display:none; }
+.no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+}
+
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+/* ---------- app shell ---------- */
+.app-shell{ animation: shellIn .5s ease-out both; }
+@keyframes shellIn{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:translateY(0);} }
+.stagger-in{ animation: shellIn .5s cubic-bezier(.16,1,.3,1) both; }
+
+/* ---------- folder tabs ---------- */
+.tabs-track{ display:flex; align-items:flex-end; }
+.folder-tab{
+  position:relative;
+  clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+  background: var(--paper);
+  color: var(--ink-dim);
+  padding: 0.85rem 1.6rem 0.65rem;
+  font-weight:700;
+  font-size:0.86rem;
+  white-space:nowrap;
+  border:none;
+  margin-inline-start:-0.9rem;
+  transition: transform .38s cubic-bezier(.34,1.56,.64,1), background .2s ease, color .2s ease;
+}
+.folder-tab:first-child{ margin-inline-start:0; }
+.folder-tab.active{
+  background: var(--paper-raised);
+  color: var(--brass);
+  transform: translateY(-4px);
+  z-index:5;
+}
+.folder-tab:active{ transform: translateY(-1px) scale(0.97); }
+.folder-tab.active:active{ transform: translateY(-2px) scale(0.97); }
+.folder-tab:not(.active):hover{ color: var(--ink); transform: translateY(-1px); }
+.folder-tab-new{
+  clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+  background: transparent;
+  border: 1px dashed var(--ink-faint);
+  color: var(--ink-faint);
+  padding: 0.85rem 1.1rem 0.65rem;
+  margin-inline-start:-0.9rem;
+}
+
+/* ---------- ledger card ---------- */
+.ledger-card{
+  position:relative;
+  background: var(--paper-raised);
+  border-radius: 1.5rem 1.5rem 0.4rem 0.4rem;
+  border: 1px solid var(--line-strong);
+  overflow:hidden;
+  transition: transform .2s ease;
+}
+.ledger-card::before{
+  content:'';
+  position:absolute; top:0; bottom:0; right:0.85rem;
+  width:1px;
+  background: var(--margin);
+  opacity:0.3;
+  z-index:0;
+}
+.ledger-card > *{ position:relative; z-index:1; }
+.card-swap{ animation: cardSwap .38s cubic-bezier(.16,1,.3,1) both; }
+@keyframes cardSwap{ from{ opacity:0; transform: translateY(5px) scale(0.994);} to{ opacity:1; transform:translateY(0) scale(1);} }
+.stamp{
+  width:2.9rem; height:2.9rem; border-radius:9999px;
+  display:flex; align-items:center; justify-content:center;
+  border:1.5px dashed var(--brass-dim);
+  color:var(--brass);
+  font-weight:800; font-size:1.1rem;
+  background: var(--brass-soft);
+  flex-shrink:0;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), border-color .2s ease;
+}
+.icon-btn{
+  padding:0.55rem; border-radius:0.85rem;
+  transition: background .15s ease, transform .12s cubic-bezier(.34,1.56,.64,1);
+  position:relative; overflow:hidden;
+}
+.icon-btn:active{ transform:scale(0.88) rotate(-2deg); }
+.icon-btn:hover{ transform:translateY(-1px); }
+button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-color: var(--brass); }
+
+/* ---------- ripple ---------- */
+.ripple{
+  position:absolute; border-radius:9999px; pointer-events:none;
+  background: rgba(255,255,255,0.35);
+  transform: scale(0); opacity:0.55;
+  animation: rippleOut .55s cubic-bezier(.16,1,.3,1) forwards;
+}
+@keyframes rippleOut{ to{ transform: scale(2.6); opacity:0; } }
+
+/* ---------- ruled ledger lines for transaction list ---------- */
+.ruled{
+  background-image: repeating-linear-gradient(to bottom, transparent 0 3.15rem, var(--line) 3.15rem calc(3.15rem + 1px));
+}
+
+/* ---------- action stamp buttons ---------- */
+.stamp-btn{
+  border:1.5px dashed transparent;
+  border-radius:1.1rem;
+  position:relative; overflow:hidden;
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1), border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.stamp-btn:hover{ transform: translateY(-2px); }
+.stamp-btn:active{ transform:scale(0.95) translateY(0); }
+
+/* ---------- split action buttons ---------- */
+.action-split{ position:relative; overflow:hidden; transition: background .15s ease; }
+.action-split:hover{ background: var(--paper-raised) !important; }
+.action-split:active{ background: var(--paper-raised) !important; }
+.action-split > div:first-child{ transition: transform .15s cubic-bezier(.34,1.56,.64,1); }
+.action-split:active > div:first-child{ transform: scale(0.9); }
+
+/* ---------- transaction row ---------- */
+.ledger-row{ animation: rowIn .4s cubic-bezier(.16,1,.3,1) both; overflow:hidden; }
+@keyframes rowIn{ from{ opacity:0; transform: translateX(-6px);} to{ opacity:1; transform:translateX(0);} }
+.ledger-row.removing{
+  animation: rowOut .28s cubic-bezier(.4,0,1,1) forwards;
+}
+@keyframes rowOut{ to{ opacity:0; transform: translateX(-14px) scale(0.98); height:0 !important; padding-top:0; padding-bottom:0; margin:0; } }
+.tx-delete{ transition: transform .15s ease, color .15s ease, background .15s ease; border-radius:9999px; width:1.6rem; height:1.6rem; display:flex; align-items:center; justify-content:center; }
+.tx-delete:hover{ color:var(--crimson) !important; background:var(--crimson-soft); }
+.tx-delete:active{ transform: scale(0.85); }
+
+/* ---------- modal ---------- */
+.modal-enter{ opacity:0; transform: translateY(28px) scale(0.98); }
+.modal-enter-active{ opacity:1; transform:translateY(0) scale(1); transition: opacity .32s ease-out, transform .42s cubic-bezier(.2,1.3,.4,1); }
+.modal-exit{ opacity:1; transform:translateY(0) scale(1); }
+.modal-exit-active{ opacity:0; transform:translateY(16px) scale(0.98); transition: all .2s ease-in; }
+.overlay-enter{ opacity:0; }
+.overlay-enter-active{ opacity:1; transition:opacity .3s ease-out; }
+.overlay-exit{ opacity:1; }
+.overlay-exit-active{ opacity:0; transition:opacity .2s ease-in; }
+.drawer-handle{ width:2.75rem; height:0.3rem; border-radius:9999px; background: var(--ink-faint); margin:0 auto; transition: background .2s ease; }
+#newWalletModal:active .drawer-handle, #expenseModal:active .drawer-handle, #incomeModal:active .drawer-handle{ background: var(--brass); }
+
+/* ---------- toast ---------- */
+#toast{
+  position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(0.5rem);
+  background: var(--paper-raised); border:1px solid var(--line-strong); color:var(--ink);
+  padding:0.75rem 1.25rem; border-radius:1rem; font-size:0.85rem; font-weight:700;
+  display:flex; align-items:center; gap:0.5rem; z-index:60; opacity:0; pointer-events:none;
+  box-shadow: 0 10px 30px -8px rgba(0,0,0,0.5);
+  transition: opacity .25s ease, transform .25s cubic-bezier(.2,1.3,.4,1);
+}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+#toast .dot{ width:0.5rem; height:0.5rem; border-radius:9999px; background:var(--brass); flex-shrink:0; }
+
+.ledger-input{
+  width:100%; background:transparent; color:var(--ink);
+  border:none; border-bottom:1.5px solid var(--line-strong);
+  padding: 0.6rem 0.1rem; font-size:1rem;
+  transition: border-color .15s ease;
+}
+.ledger-input:focus{ outline:none; border-color: var(--brass); }
+.ledger-input.amt{ font-family:'JetBrains Mono','Cairo',monospace; font-size:1.6rem; font-weight:600; }
+.field-label{ font-size:0.72rem; color:var(--ink-faint); font-weight:700; letter-spacing:0.02em; margin-bottom:0.35rem; display:block; }
+.field-err{ font-size:0.72rem; color:var(--crimson); margin-top:0.35rem; min-height:1rem; }
+.cat-chip{
+  padding:0.45rem 0.95rem; border-radius:9999px; font-size:0.78rem; font-weight:700;
+  border:1.5px solid var(--line-strong); color:var(--ink-dim); background:transparent;
+  transition: all .15s ease; white-space:nowrap;
+}
+.cat-chip:active{ transform: scale(0.94); }
+
+.loading-mark{ animation: pulseMark 1.4s ease-in-out infinite; }
+@keyframes pulseMark{ 0%,100%{ opacity:.35;} 50%{ opacity:1;} }
+</style>
 </head>
-<body class="antialiased min-h-screen pb-20">
+<body class="min-h-screen pb-16">
 
-    <div class="max-w-md mx-auto min-h-screen flex flex-col relative">
-        
-        <!-- الهيدر -->
-        <header class="flex justify-between items-center p-6 pb-2">
-            <h1 class="text-3xl font-bold text-gold">محفظتي</h1>
-            <button onclick="openModal('newWalletModal')" class="bg-card border border-slate-700 hover:border-gold p-3 rounded-2xl text-gold transition-colors shadow-lg active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+<div class="max-w-md mx-auto min-h-screen flex flex-col relative app-shell">
+
+  <!-- loading state -->
+  <div id="loadingState" class="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-screen">
+    <div class="stamp loading-mark mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </div>
+    <p class="text-sm text-slate-500 loading-mark">بنفتح الدفتر...</p>
+  </div>
+
+  <div id="mainApp" class="hidden flex-1 flex flex-col">
+
+    <!-- header -->
+    <header class="flex justify-between items-center px-6 pt-6 pb-3 stagger-in" style="animation-delay:.02s">
+      <div>
+        <h1 class="text-2xl font-800 font-extrabold" style="color:var(--ink)">محفظتي</h1>
+      </div>
+      <button onclick="openModal('newWalletModal')" class="stamp icon-btn" title="محفظة جديدة">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+    </header>
+
+    <!-- wallet folder tabs -->
+    <div class="px-6 pt-3 stagger-in" style="animation-delay:.08s">
+      <div id="walletsTabs" class="tabs-track overflow-x-auto no-scrollbar"></div>
+    </div>
+
+    <!-- empty state -->
+    <div id="emptyState" class="hidden flex-1 flex flex-col items-center justify-center p-8 text-center mt-6">
+      <div class="w-24 h-24 rounded-full flex items-center justify-center mb-6 border" style="background:var(--paper); border-color:var(--line-strong)">
+        <svg xmlns="http://www.w3.org/2000/svg" style="color:var(--brass)" opacity="0.7" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      </div>
+      <h2 class="text-lg font-bold mb-2">الدفتر لسه فاضي</h2>
+      <p class="text-sm mb-8" style="color:var(--ink-faint)">افتح أول صفحة بإنشاء محفظة جديدة تسجّل فيها مصروفاتك.</p>
+      <button onclick="openModal('newWalletModal')" class="font-bold px-8 py-3.5 rounded-2xl w-full stamp-btn" style="background:var(--brass); color:#1a1408;">
+        إنشاء محفظة جديدة
+      </button>
+    </div>
+
+    <!-- active wallet view -->
+    <div id="walletView" class="hidden flex-1 flex flex-col px-6">
+
+      <div id="ledgerCard" class="ledger-card p-6 mb-6 stagger-in" style="animation-delay:.12s">
+        <div class="flex justify-between items-start mb-1">
+          <div class="flex items-center gap-3">
+            <div id="walletStamp" class="stamp text-base">م</div>
+            <div>
+              <p class="text-xs" style="color:var(--ink-faint)">الرصيد المتبقي</p>
+              <p id="walletNameLabel" class="text-sm font-bold" style="color:var(--ink)"></p>
+            </div>
+          </div>
+          <div class="flex gap-1.5">
+            <button onclick="exportToPDF()" title="تصدير PDF" class="icon-btn" style="background:var(--crimson-soft); color:var(--crimson)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
             </button>
-        </header>
-
-        <!-- شريط المحافظ -->
-        <div class="px-6 py-4">
-            <div id="walletsTabs" class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                <!-- سيتم ملء المحافظ هنا -->
-            </div>
-        </div>
-
-        <!-- حالة عدم وجود محافظ -->
-        <div id="emptyState" class="flex-1 flex flex-col items-center justify-center p-8 text-center mt-10">
-            <div class="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center mb-6 border border-slate-700">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-gold opacity-50" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
-            </div>
-            <h2 class="text-xl font-bold mb-2">لا توجد محافظ حالياً</h2>
-            <p class="text-slate-400 mb-8 text-sm">أنشئ محفظة جديدة للبدء.</p>
-            <button onclick="openModal('newWalletModal')" class="bg-gold text-dark font-bold px-8 py-3 rounded-2xl shadow-[0_0_15px_rgba(212,175,55,0.4)] active:scale-95 transition-transform w-full">
-                إنشاء محفظة جديدة
+            <button onclick="exportToWhatsApp()" title="مشاركة" class="icon-btn" style="background:var(--emerald-soft); color:var(--emerald)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             </button>
+            <button onclick="askDeleteWallet()" title="حذف المحفظة" class="icon-btn" style="background:rgba(255,255,255,0.04); color:var(--ink-faint)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+          </div>
         </div>
 
-        <!-- عرض المحفظة النشطة -->
-        <div id="walletView" class="hidden flex-1 flex flex-col px-6">
-            
-            <div class="glass-card rounded-[2rem] p-6 mb-6 relative overflow-hidden">
-                <div class="absolute -top-12 -right-12 w-32 h-32 bg-gold opacity-20 rounded-full blur-3xl pointer-events-none"></div>
-                <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-blue-500 opacity-10 rounded-full blur-3xl pointer-events-none"></div>
-                
-                <div class="flex justify-between items-start mb-1">
-                    <p class="text-slate-400 text-sm font-medium">الرصيد المتبقي</p>
-                    <div class="flex gap-2">
-                        <button onclick="exportToPDF()" title="تصدير كملف PDF" class="bg-red-500/20 text-red-400 p-2 rounded-xl hover:bg-red-500/30 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></svg>
-                        </button>
-                        <button onclick="exportToWhatsApp()" title="مشاركة عبر واتساب" class="bg-green-500/20 text-green-400 p-2 rounded-xl hover:bg-green-500/30 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex items-end gap-2 mb-8">
-                    <h2 id="cardRemaining" class="text-4xl md:text-5xl font-bold tracking-tight text-white">0</h2>
-                    <span class="text-gold text-lg mb-1 font-bold">ج.م</span>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4 border-t border-slate-700/50 pt-5">
-                    <div>
-                        <p class="text-slate-400 text-xs mb-1">إجمالي الميزانية</p>
-                        <p id="cardTotal" class="text-sm font-bold text-slate-200">0 ج.م</p>
-                    </div>
-                    <div>
-                        <p class="text-slate-400 text-xs mb-1">إجمالي المصروفات</p>
-                        <p id="cardSpent" class="text-sm font-bold text-red-400">0 ج.م</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 mb-8">
-                <button onclick="openModal('expenseModal')" class="bg-card border border-slate-700/80 hover:bg-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center gap-3 transition-colors active:scale-95 shadow-sm group">
-                    <div class="bg-red-500/10 text-red-500 p-3 rounded-xl group-hover:bg-red-500/20 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>
-                    </div>
-                    <span class="font-bold text-slate-200 text-sm">صرف</span>
-                </button>
-                
-                <button onclick="openModal('incomeModal')" class="bg-card border border-slate-700/80 hover:bg-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center gap-3 transition-colors active:scale-95 shadow-sm group">
-                    <div class="bg-green-500/10 text-green-500 p-3 rounded-xl group-hover:bg-green-500/20 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
-                    </div>
-                    <span class="font-bold text-slate-200 text-sm">إضافة رصيد</span>
-                </button>
-            </div>
-
-            <div class="flex-1">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-lg text-slate-200">سجل العمليات</h3>
-                    <span id="transCount" class="text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">0 عملية</span>
-                </div>
-                
-                <div id="emptyTransactions" class="hidden text-center py-10 bg-card rounded-2xl border border-slate-800 border-dashed">
-                    <p class="text-slate-500 text-sm">لا توجد عمليات مسجلة.</p>
-                </div>
-
-                <ul id="transactionsList" class="space-y-3 pb-6">
-                </ul>
-            </div>
+        <div class="flex items-end gap-2 mb-5 mt-3">
+          <h2 id="cardRemaining" class="mono text-5xl font-bold" style="color:var(--ink)">0</h2>
+          <span class="text-base mb-1.5 font-bold" style="color:var(--brass)">ج.م</span>
         </div>
+
+        <div class="grid grid-cols-2 gap-4 pt-4" style="border-top:1px dashed var(--line-strong)">
+          <div>
+            <p class="text-xs mb-1" style="color:var(--ink-faint)">إجمالي الميزانية</p>
+            <p id="cardTotal" class="mono text-sm font-bold" style="color:var(--ink)">0 ج.م</p>
+          </div>
+          <div>
+            <p class="text-xs mb-1" style="color:var(--ink-faint)">إجمالي المصروفات</p>
+            <p id="cardSpent" class="mono text-sm font-bold" style="color:var(--crimson)">0 ج.م</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex rounded-2xl overflow-hidden mb-7 stagger-in" style="animation-delay:.18s; border:1px solid var(--line-strong)">
+        <button onclick="openModal('expenseModal')" class="action-split flex-1 flex items-center gap-3 p-4" style="background:var(--paper)">
+          <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style="background:var(--crimson-soft); color:var(--crimson)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>
+          </div>
+          <div class="text-right min-w-0">
+            <p class="font-bold text-sm" style="color:var(--ink)">صرف</p>
+            <p class="text-[11px] mt-0.5" style="color:var(--ink-faint)">تسجيل مصروف جديد</p>
+          </div>
+        </button>
+        <div style="width:1px; background:var(--line-strong)"></div>
+        <button onclick="openModal('incomeModal')" class="action-split flex-1 flex items-center gap-3 p-4" style="background:var(--paper)">
+          <div class="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style="background:var(--emerald-soft); color:var(--emerald)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
+          </div>
+          <div class="text-right min-w-0">
+            <p class="font-bold text-sm" style="color:var(--ink)">إضافة رصيد</p>
+            <p class="text-[11px] mt-0.5" style="color:var(--ink-faint)">دخل جديد للمحفظة</p>
+          </div>
+        </button>
+      </div>
+
+      <div class="flex-1">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold" style="color:var(--ink)">سجل العمليات</h3>
+          <span id="transCount" class="text-xs font-bold px-3 py-1 rounded-full" style="background:var(--paper); color:var(--ink-dim)">0 عملية</span>
+        </div>
+
+        <div id="emptyTransactions" class="hidden text-center py-10 rounded-2xl" style="background:var(--paper); border:1px dashed var(--line-strong)">
+          <p class="text-sm" style="color:var(--ink-faint)">مفيش عمليات مسجّلة في الصفحة دي لسه.</p>
+        </div>
+
+        <ul id="transactionsList" class="ruled rounded-2xl overflow-hidden pb-1"></ul>
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- Modals -->
-    <div id="modalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden overlay-exit" onclick="closeAllModals()"></div>
-    <div id="newWalletModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 bg-card border border-slate-700 p-6 rounded-[2rem] z-50 hidden modal-exit shadow-2xl">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold text-white">محفظة جديدة</h3>
-            <button onclick="closeModal('newWalletModal')" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-        </div>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-slate-400 text-sm mb-2 font-medium">اسم المحفظة</label>
-                <input type="text" id="walletNameInp" class="w-full bg-dark border border-slate-700 text-white rounded-xl p-4 focus:outline-none focus:border-gold transition-colors" placeholder="اسم المحفظة">
-            </div>
-            <div>
-                <label class="block text-slate-400 text-sm mb-2 font-medium">الميزانية</label>
-                <input type="number" id="walletAmountInp" class="w-full bg-dark border border-slate-700 text-white rounded-xl p-4 focus:outline-none focus:border-gold transition-colors" placeholder="0">
-            </div>
-            <button onclick="handleCreateWallet()" class="w-full bg-gold text-dark font-bold text-lg p-4 rounded-xl mt-2 active:scale-95 transition-transform">حفظ</button>
-        </div>
+<!-- ===== modals ===== -->
+<div id="modalOverlay" class="fixed inset-0 bg-black/65 backdrop-blur-sm z-40 hidden overlay-exit" onclick="closeAllModals()"></div>
+
+<div id="newWalletModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 p-6 rounded-[1.75rem] z-50 hidden modal-exit shadow-2xl" style="background:var(--paper-raised); border:1px solid var(--line-strong)">
+  <div class="drawer-handle mb-5"></div>
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-lg font-bold" style="color:var(--ink)">محفظة جديدة</h3>
+    <button onclick="closeModal('newWalletModal')" class="icon-btn" style="background:rgba(255,255,255,0.05); color:var(--ink-faint)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="field-label">اسم المحفظة</label>
+      <input type="text" id="walletNameInp" class="ledger-input" placeholder="مثلاً: مصاريف البيت">
+      <p id="walletNameErr" class="field-err"></p>
     </div>
-
-    <div id="expenseModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 bg-card border border-slate-700 p-6 rounded-[2rem] z-50 hidden modal-exit shadow-2xl">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold text-white">تسجيل مصروف</h3>
-            <button onclick="closeModal('expenseModal')" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-        </div>
-        <div class="space-y-4">
-            <div>
-                <input type="number" id="expAmountInp" class="w-full bg-dark border border-red-500/30 text-white rounded-xl p-4 focus:outline-none focus:border-red-500 transition-colors text-lg font-bold" placeholder="المبلغ">
-            </div>
-            <div>
-                <input type="text" id="expDescInp" class="w-full bg-dark border border-slate-700 text-white rounded-xl p-4 focus:outline-none focus:border-red-500 transition-colors" placeholder="الوصف">
-            </div>
-            <button onclick="handleAddTransaction('expense')" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-lg p-4 rounded-xl mt-2 active:scale-95 transition-transform">خصم</button>
-        </div>
+    <div>
+      <label class="field-label">الميزانية المبدئية</label>
+      <input type="number" id="walletAmountInp" class="ledger-input amt" placeholder="٠">
+      <p id="walletAmountErr" class="field-err"></p>
     </div>
+    <button onclick="handleCreateWallet()" class="w-full font-bold text-base p-4 rounded-2xl mt-1 stamp-btn" style="background:var(--brass); color:#1a1408;">حفظ المحفظة</button>
+  </div>
+</div>
 
-    <div id="incomeModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 bg-card border border-slate-700 p-6 rounded-[2rem] z-50 hidden modal-exit shadow-2xl">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold text-white">إضافة رصيد</h3>
-            <button onclick="closeModal('incomeModal')" class="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-        </div>
-        <div class="space-y-4">
-            <div>
-                <input type="number" id="incAmountInp" class="w-full bg-dark border border-green-500/30 text-white rounded-xl p-4 focus:outline-none focus:border-green-500 transition-colors text-lg font-bold" placeholder="المبلغ">
-            </div>
-            <div>
-                <input type="text" id="incDescInp" class="w-full bg-dark border border-slate-700 text-white rounded-xl p-4 focus:outline-none focus:border-green-500 transition-colors" placeholder="المصدر">
-            </div>
-            <button onclick="handleAddTransaction('income')" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold text-lg p-4 rounded-xl mt-2 active:scale-95 transition-transform">إضافة</button>
-        </div>
+<div id="expenseModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 p-6 rounded-[1.75rem] z-50 hidden modal-exit shadow-2xl" style="background:var(--paper-raised); border:1px solid var(--line-strong)">
+  <div class="drawer-handle mb-5"></div>
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-lg font-bold" style="color:var(--ink)">تسجيل مصروف</h3>
+    <button onclick="closeModal('expenseModal')" class="icon-btn" style="background:rgba(255,255,255,0.05); color:var(--ink-faint)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="field-label">المبلغ</label>
+      <input type="number" id="expAmountInp" class="ledger-input amt" placeholder="٠" style="border-color:rgba(177,69,75,0.4)">
+      <p id="expAmountErr" class="field-err"></p>
     </div>
+    <div>
+      <label class="field-label">الوصف</label>
+      <input type="text" id="expDescInp" class="ledger-input" placeholder="مثلاً: مشتريات السوبر ماركت">
+      <p id="expDescErr" class="field-err"></p>
+    </div>
+    <button onclick="handleAddTransaction('expense')" class="w-full font-bold text-base p-4 rounded-2xl mt-1 stamp-btn" style="background:var(--crimson); color:#fff;">خصم من الرصيد</button>
+  </div>
+</div>
 
-    <script>
-        let wallets = JSON.parse(localStorage.getItem('myWalletsData')) || [];
-        let currentWalletId = localStorage.getItem('currentWalletId') || null;
+<div id="incomeModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 p-6 rounded-[1.75rem] z-50 hidden modal-exit shadow-2xl" style="background:var(--paper-raised); border:1px solid var(--line-strong)">
+  <div class="drawer-handle mb-5"></div>
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-lg font-bold" style="color:var(--ink)">إضافة رصيد</h3>
+    <button onclick="closeModal('incomeModal')" class="icon-btn" style="background:rgba(255,255,255,0.05); color:var(--ink-faint)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="field-label">المبلغ</label>
+      <input type="number" id="incAmountInp" class="ledger-input amt" placeholder="٠" style="border-color:rgba(75,156,124,0.4)">
+      <p id="incAmountErr" class="field-err"></p>
+    </div>
+    <div>
+      <label class="field-label">المصدر</label>
+      <input type="text" id="incDescInp" class="ledger-input" placeholder="مثلاً: راتب الشهر">
+      <p id="incDescErr" class="field-err"></p>
+    </div>
+    <button onclick="handleAddTransaction('income')" class="w-full font-bold text-base p-4 rounded-2xl mt-1 stamp-btn" style="background:var(--emerald); color:#0e1a15;">إضافة للرصيد</button>
+  </div>
+</div>
 
-        function saveData() { localStorage.setItem('myWalletsData', JSON.stringify(wallets)); localStorage.setItem('currentWalletId', currentWalletId); }
-        const fmt = (num) => new Intl.NumberFormat('ar-EG').format(num);
+<div id="confirmModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 p-6 rounded-[1.75rem] z-50 hidden modal-exit shadow-2xl" style="background:var(--paper-raised); border:1px solid var(--line-strong)">
+  <div class="drawer-handle mb-5"></div>
+  <h3 class="text-lg font-bold mb-2" style="color:var(--ink)">حذف المحفظة؟</h3>
+  <p id="confirmText" class="text-sm mb-6" style="color:var(--ink-faint)"></p>
+  <div class="grid grid-cols-2 gap-3">
+    <button onclick="closeModal('confirmModal')" class="font-bold p-3.5 rounded-2xl stamp-btn" style="background:var(--paper); color:var(--ink)">إلغاء</button>
+    <button onclick="confirmDeleteWallet()" class="font-bold p-3.5 rounded-2xl stamp-btn" style="background:var(--crimson); color:#fff">حذف نهائي</button>
+  </div>
+</div>
 
-        function openModal(id) { const overlay = document.getElementById('modalOverlay'); const modal = document.getElementById(id); overlay.classList.remove('hidden', 'overlay-exit', 'overlay-exit-active'); modal.classList.remove('hidden', 'modal-exit', 'modal-exit-active'); void overlay.offsetWidth; overlay.classList.add('overlay-enter', 'overlay-enter-active'); modal.classList.add('modal-enter', 'modal-enter-active'); setTimeout(() => { overlay.classList.remove('overlay-enter'); modal.classList.remove('modal-enter'); }, 10); }
-        function closeModal(id) { const overlay = document.getElementById('modalOverlay'); const modal = document.getElementById(id); overlay.classList.add('overlay-exit', 'overlay-exit-active'); modal.classList.add('modal-exit', 'modal-exit-active'); setTimeout(() => { overlay.classList.add('hidden'); modal.classList.add('hidden'); overlay.classList.remove('overlay-exit', 'overlay-exit-active', 'overlay-enter-active'); modal.classList.remove('modal-exit', 'modal-exit-active', 'modal-enter-active'); }, 200); }
-        function closeAllModals() { ['newWalletModal', 'expenseModal', 'incomeModal'].forEach(id => { if(!document.getElementById(id).classList.contains('hidden')) closeModal(id); }); }
+<div id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
 
-        function handleCreateWallet() { const name = document.getElementById('walletNameInp').value.trim(); const amount = parseFloat(document.getElementById('walletAmountInp').value); if (!name || isNaN(amount)) return alert('بيانات غير صحيحة'); const newWallet = { id: Date.now().toString(), name: name, baseAmount: amount, transactions: [] }; wallets.push(newWallet); currentWalletId = newWallet.id; saveData(); closeModal('newWalletModal'); updateUI(); }
-        function selectWallet(id) { currentWalletId = id; saveData(); updateUI(); }
-        function handleAddTransaction(type) { const amt = parseFloat(document.getElementById(type === 'expense' ? 'expAmountInp' : 'incAmountInp').value); const desc = document.getElementById(type === 'expense' ? 'expDescInp' : 'incDescInp').value.trim(); if(isNaN(amt) || !desc) return; const w = wallets.find(w => w.id === currentWalletId); w.transactions.push({ id: Date.now().toString(), type, amount: amt, desc, date: new Date() }); saveData(); closeModal(type === 'expense' ? 'expenseModal' : 'incomeModal'); updateUI(); }
-        function deleteTransaction(transId) { const w = wallets.find(w => w.id === currentWalletId); w.transactions = w.transactions.filter(t => t.id !== transId); saveData(); updateUI(); }
+<script>
+let wallets = [];
+let currentWalletId = null;
+let pendingDeleteWalletId = null;
+const fmt = (num) => { if(!isFinite(num)) num = 0; return new Intl.NumberFormat('en-US', {maximumFractionDigits:2}).format(num); };
 
-        function exportToWhatsApp() { const w = wallets.find(w => w.id === currentWalletId); if (!w) return; const total = w.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) + w.baseAmount - w.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0); let msg = `تقرير ${w.name}: الرصيد المتبقي ${fmt(total)} ج.م`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank'); }
-        function exportToPDF() { const w = wallets.find(w => w.id === currentWalletId); if(!w) return; const div = document.createElement('div'); div.innerHTML = `<h1 style="text-align:center">${w.name}</h1><p>الرصيد المتبقي: ${fmt(w.baseAmount + w.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0) - w.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0))} ج.م</p>`; document.body.appendChild(div); html2pdf().from(div).save().then(() => document.body.removeChild(div)); }
+async function loadData(){
+  try{
+    const res = await window.storage.get('wallet-app-state');
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      wallets = parsed.wallets || [];
+      currentWalletId = parsed.currentWalletId || null;
+    }
+  }catch(e){
+    // no saved data yet, start fresh
+  }
+  document.getElementById('loadingState').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  updateUI();
+}
 
-        function updateUI() {
-            const emptyState = document.getElementById('emptyState'); const walletView = document.getElementById('walletView'); const tabsContainer = document.getElementById('walletsTabs');
-            if (wallets.length === 0) { emptyState.classList.remove('hidden'); walletView.classList.add('hidden'); return; }
-            emptyState.classList.add('hidden'); walletView.classList.remove('hidden'); tabsContainer.innerHTML = '';
-            wallets.forEach(w => { const btn = document.createElement('button'); btn.onclick = () => selectWallet(w.id); btn.className = `whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-bold ${w.id === currentWalletId ? 'bg-gold text-dark' : 'bg-card text-slate-400 border border-slate-700'}`; btn.textContent = w.name; tabsContainer.appendChild(btn); });
-            if(!currentWalletId && wallets.length > 0) currentWalletId = wallets[0].id;
-            const w = wallets.find(w => w.id === currentWalletId);
-            if(!w) return;
-            const inc = w.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-            const exp = w.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-            document.getElementById('cardRemaining').textContent = fmt(w.baseAmount + inc - exp);
-            document.getElementById('cardTotal').textContent = fmt(w.baseAmount + inc) + ' ج.م';
-            document.getElementById('cardSpent').textContent = fmt(exp) + ' ج.م';
-            const list = document.getElementById('transactionsList'); list.innerHTML = '';
-            w.transactions.slice().reverse().forEach(t => {
-                const li = document.createElement('li'); li.className = 'bg-card border border-slate-700/50 p-4 rounded-2xl flex justify-between';
-                li.innerHTML = `<div><p class="font-bold text-slate-200">${t.desc}</p></div><div class="flex gap-4"><p class="font-bold ${t.type === 'expense' ? 'text-red-400' : 'text-green-400'}">${t.type === 'expense' ? '-' : '+'}${fmt(t.amount)}</p><button onclick="deleteTransaction('${t.id}')" class="text-slate-600">×</button></div>`;
-                list.appendChild(li);
-            });
-            document.getElementById('transCount').textContent = w.transactions.length + ' عملية';
-        }
-        updateUI();
-    </script>
+async function saveData(){
+  try{
+    await window.storage.set('wallet-app-state', JSON.stringify({ wallets, currentWalletId }));
+  }catch(e){
+    console.error('تعذّر حفظ البيانات', e);
+  }
+}
+
+function openModal(id){
+  const overlay = document.getElementById('modalOverlay');
+  const modal = document.getElementById(id);
+  overlay.classList.remove('hidden','overlay-exit','overlay-exit-active');
+  modal.classList.remove('hidden','modal-exit','modal-exit-active');
+  void overlay.offsetWidth;
+  overlay.classList.add('overlay-enter','overlay-enter-active');
+  modal.classList.add('modal-enter','modal-enter-active');
+  setTimeout(()=>{ overlay.classList.remove('overlay-enter'); modal.classList.remove('modal-enter'); }, 10);
+}
+function closeModal(id){
+  const overlay = document.getElementById('modalOverlay');
+  const modal = document.getElementById(id);
+  overlay.classList.add('overlay-exit','overlay-exit-active');
+  modal.classList.add('modal-exit','modal-exit-active');
+  setTimeout(()=>{
+    overlay.classList.add('hidden'); modal.classList.add('hidden');
+    overlay.classList.remove('overlay-exit','overlay-exit-active','overlay-enter-active');
+    modal.classList.remove('modal-exit','modal-exit-active','modal-enter-active');
+  }, 200);
+}
+function closeAllModals(){
+  ['newWalletModal','expenseModal','incomeModal','confirmModal'].forEach(id=>{
+    if(!document.getElementById(id).classList.contains('hidden')) closeModal(id);
+  });
+}
+function clearErr(id){ document.getElementById(id).textContent=''; }
+
+let toastTimer;
+function showToast(msg){
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), 1700);
+}
+
+document.addEventListener('pointerdown', (e)=>{
+  const btn = e.target.closest('.stamp-btn, .icon-btn, .folder-tab');
+  if(!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 1.3;
+  const span = document.createElement('span');
+  span.className = 'ripple';
+  span.style.width = span.style.height = size + 'px';
+  span.style.left = (e.clientX - rect.left - size/2) + 'px';
+  span.style.top = (e.clientY - rect.top - size/2) + 'px';
+  btn.appendChild(span);
+  setTimeout(()=> span.remove(), 600);
+});
+
+function animateNumber(el, to, suffix=''){
+  const from = parseFloat(el.dataset.val || '0');
+  if(Math.abs(from - to) < 0.01){ el.textContent = fmt(to) + suffix; el.dataset.val = to; return; }
+  const start = performance.now();
+  const duration = 480;
+  function tick(now){
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmt(from + (to - from) * eased) + suffix;
+    if(t < 1) requestAnimationFrame(tick);
+    else { el.textContent = fmt(to) + suffix; el.dataset.val = to; }
+  }
+  requestAnimationFrame(tick);
+}
+
+function handleCreateWallet(){
+  clearErr('walletNameErr'); clearErr('walletAmountErr');
+  const nameInp = document.getElementById('walletNameInp');
+  const amtInp = document.getElementById('walletAmountInp');
+  const name = nameInp.value.trim();
+  const amount = parseFloat(amtInp.value);
+  let ok = true;
+  if(!name){ document.getElementById('walletNameErr').textContent = 'محتاج اسم للمحفظة'; ok=false; }
+  if(isNaN(amount) || amount < 0){ document.getElementById('walletAmountErr').textContent = 'اكتب مبلغ صحيح'; ok=false; }
+  if(!ok) return;
+  const newWallet = { id: Date.now().toString(), name, baseAmount: amount, transactions: [] };
+  wallets.push(newWallet);
+  currentWalletId = newWallet.id;
+  saveData();
+  nameInp.value=''; amtInp.value='';
+  closeModal('newWalletModal');
+  updateUI();
+  showToast(`اتفتحت محفظة "${name}"`);
+}
+
+function selectWallet(id){
+  if(id === currentWalletId) return;
+  currentWalletId = id;
+  saveData();
+  const card = document.getElementById('ledgerCard');
+  if(card){ card.classList.remove('card-swap'); void card.offsetWidth; card.classList.add('card-swap'); }
+  updateUI();
+}
+
+function askDeleteWallet(){
+  const w = wallets.find(w=>w.id===currentWalletId);
+  if(!w) return;
+  pendingDeleteWalletId = w.id;
+  document.getElementById('confirmText').textContent = `هيتم حذف محفظة "${w.name}" وكل العمليات المسجّلة فيها، مفيش رجوع بعد كده.`;
+  openModal('confirmModal');
+}
+function confirmDeleteWallet(){
+  const w = wallets.find(w=>w.id===pendingDeleteWalletId);
+  wallets = wallets.filter(w=>w.id!==pendingDeleteWalletId);
+  if(currentWalletId===pendingDeleteWalletId){
+    currentWalletId = wallets.length ? wallets[0].id : null;
+  }
+  pendingDeleteWalletId = null;
+  saveData();
+  closeModal('confirmModal');
+  updateUI();
+  if(w) showToast(`اتحذفت محفظة "${w.name}"`);
+}
+
+function handleAddTransaction(type){
+  const amtId = type==='expense' ? 'expAmountInp' : 'incAmountInp';
+  const descId = type==='expense' ? 'expDescInp' : 'incDescInp';
+  const amtErrId = type==='expense' ? 'expAmountErr' : 'incAmountErr';
+  const descErrId = type==='expense' ? 'expDescErr' : 'incDescErr';
+  clearErr(amtErrId); clearErr(descErrId);
+  const amtInp = document.getElementById(amtId);
+  const descInp = document.getElementById(descId);
+  const amt = parseFloat(amtInp.value);
+  const desc = descInp.value.trim();
+  let ok = true;
+  if(isNaN(amt) || amt <= 0){ document.getElementById(amtErrId).textContent = 'اكتب مبلغ أكبر من صفر'; ok=false; }
+  if(!desc){ document.getElementById(descErrId).textContent = 'اكتب وصف مختصر'; ok=false; }
+  if(!ok) return;
+  const w = wallets.find(w=>w.id===currentWalletId);
+  const tx = { id: Date.now().toString(), type, amount: amt, desc, date: new Date().toISOString() };
+  w.transactions.push(tx);
+  saveData();
+  amtInp.value=''; descInp.value='';
+  closeModal(type==='expense' ? 'expenseModal' : 'incomeModal');
+  updateUI();
+  showToast(type==='expense' ? 'اتسجّل المصروف' : 'اتضاف للرصيد');
+}
+
+function deleteTransaction(transId){
+  const w = wallets.find(w=>w.id===currentWalletId);
+  const li = document.querySelector(`li[data-id="${transId}"]`);
+  const finish = () => {
+    w.transactions = w.transactions.filter(t=>t.id!==transId);
+    saveData();
+    updateUI();
+    showToast('اتشطبت العملية');
+  };
+  if(li){ li.classList.add('removing'); setTimeout(finish, 260); }
+  else finish();
+}
+
+function computeTotals(w){
+  const inc = w.transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp = w.transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  return { inc, exp, remaining: w.baseAmount + inc - exp };
+}
+
+function exportToWhatsApp(){
+  const w = wallets.find(w=>w.id===currentWalletId);
+  if(!w) return;
+  const { remaining } = computeTotals(w);
+  const msg = `تقرير محفظة "${w.name}": الرصيد المتبقي ${fmt(remaining)} ج.م`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function exportToPDF(){
+  const w = wallets.find(w=>w.id===currentWalletId);
+  if(!w) return;
+  const { inc, exp, remaining } = computeTotals(w);
+  const rowsHtml = w.transactions.slice().reverse().map((t,i)=>`
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #ddd;">${i+1}</td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;">${t.desc}</td>
+      <td style="padding:8px;border-bottom:1px solid #ddd;color:${t.type==='expense'?'#b1454b':'#2f7a5c'}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</td>
+    </tr>`).join('');
+  const div = document.createElement('div');
+  div.style.padding = '24px';
+  div.style.fontFamily = 'sans-serif';
+  div.style.direction = 'rtl';
+  div.innerHTML = `
+    <h1 style="text-align:center;margin-bottom:4px;">${w.name}</h1>
+    <p style="text-align:center;color:#555;margin-bottom:20px;">تقرير المحفظة</p>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <tr><td style="padding:8px;">إجمالي الميزانية</td><td style="padding:8px;font-weight:bold;">${fmt(w.baseAmount+inc)} ج.م</td></tr>
+      <tr><td style="padding:8px;">إجمالي المصروفات</td><td style="padding:8px;font-weight:bold;color:#b1454b;">${fmt(exp)} ج.م</td></tr>
+      <tr><td style="padding:8px;">الرصيد المتبقي</td><td style="padding:8px;font-weight:bold;">${fmt(remaining)} ج.م</td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr><th style="text-align:right;padding:8px;border-bottom:2px solid #333;">#</th><th style="text-align:right;padding:8px;border-bottom:2px solid #333;">الوصف</th><th style="text-align:right;padding:8px;border-bottom:2px solid #333;">المبلغ</th></tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  document.body.appendChild(div);
+  html2pdf().from(div).save(`${w.name}.pdf`).then(()=> document.body.removeChild(div));
+}
+
+function updateUI(){
+  const emptyState = document.getElementById('emptyState');
+  const walletView = document.getElementById('walletView');
+  const tabsContainer = document.getElementById('walletsTabs');
+
+  if(wallets.length === 0){
+    emptyState.classList.remove('hidden');
+    walletView.classList.add('hidden');
+    tabsContainer.innerHTML = '';
+    return;
+  }
+  emptyState.classList.add('hidden');
+  walletView.classList.remove('hidden');
+
+  if(!currentWalletId || !wallets.some(w=>w.id===currentWalletId)){
+    currentWalletId = wallets[0].id;
+  }
+
+  tabsContainer.innerHTML = '';
+  wallets.forEach(w=>{
+    const btn = document.createElement('button');
+    btn.onclick = () => selectWallet(w.id);
+    btn.className = 'folder-tab' + (w.id===currentWalletId ? ' active' : '');
+    btn.textContent = w.name;
+    tabsContainer.appendChild(btn);
+  });
+
+  const w = wallets.find(w=>w.id===currentWalletId);
+  if(!w) return;
+
+  const { inc, exp, remaining } = computeTotals(w);
+  document.getElementById('walletStamp').textContent = w.name.trim().charAt(0) || 'م';
+  document.getElementById('walletNameLabel').textContent = w.name;
+  animateNumber(document.getElementById('cardRemaining'), remaining);
+  animateNumber(document.getElementById('cardTotal'), w.baseAmount + inc, ' ج.م');
+  animateNumber(document.getElementById('cardSpent'), exp, ' ج.م');
+
+  const list = document.getElementById('transactionsList');
+  const emptyTx = document.getElementById('emptyTransactions');
+  list.innerHTML = '';
+
+  if(w.transactions.length === 0){
+    emptyTx.classList.remove('hidden');
+  } else {
+    emptyTx.classList.add('hidden');
+    w.transactions.slice().reverse().forEach((t, idx)=>{
+      const dateStr = new Date(t.date).toLocaleDateString('ar-EG', { day:'numeric', month:'short' });
+      const li = document.createElement('li');
+      li.className = 'ledger-row flex justify-between items-center px-4';
+      li.style.height = '3.15rem';
+      li.style.animationDelay = (Math.min(idx,10) * 0.035) + 's';
+      li.dataset.id = t.id;
+      li.innerHTML = `
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-xs w-5 shrink-0" style="color:var(--ink-faint)">${w.transactions.length - idx}</span>
+          <div class="min-w-0">
+            <p class="font-bold text-sm truncate" style="color:var(--ink)">${t.desc}</p>
+            <p class="text-[11px]" style="color:var(--ink-faint)">${dateStr}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 shrink-0">
+          <p class="mono font-bold text-sm" style="color:${t.type==='expense'?'var(--crimson)':'var(--emerald)'}">${t.type==='expense'?'-':'+'}${fmt(t.amount)}</p>
+          <button onclick="deleteTransaction('${t.id}')" class="tx-delete text-lg leading-none" style="color:var(--ink-faint)">×</button>
+        </div>`;
+      list.appendChild(li);
+    });
+  }
+  document.getElementById('transCount').textContent = w.transactions.length + ' عملية';
+}
+
+loadData();
+</script>
 </body>
 </html>
-
-```
