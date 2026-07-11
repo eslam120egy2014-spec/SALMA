@@ -220,6 +220,14 @@ button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-
 
 .loading-mark{ animation: pulseMark 1.4s ease-in-out infinite; }
 @keyframes pulseMark{ 0%,100%{ opacity:.35;} 50%{ opacity:1;} }
+
+.calc-key{
+  padding:0.95rem 0; border-radius:1rem; font-size:1.05rem; font-weight:700;
+  background: var(--paper); color:var(--ink); border:1px solid var(--line-strong);
+  transition: transform .12s cubic-bezier(.34,1.56,.64,1), background .15s ease;
+  font-family:'JetBrains Mono','Cairo',monospace;
+}
+.calc-key:active{ transform: scale(0.92); }
 </style>
 </head>
 <body class="min-h-screen pb-16">
@@ -239,12 +247,17 @@ button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-
     <!-- header -->
     <header class="flex justify-between items-center px-6 pt-6 pb-3 stagger-in" style="animation-delay:.02s">
       <div>
-        <h1 class="text-2xl font-800 font-extrabold" style="color:var(--ink)">محفظتي</h1>
+        <h1 id="appTitle" class="text-2xl font-800 font-extrabold select-none" style="color:var(--ink)">محفظتي</h1>
         <p id="todayDate" class="text-xs mt-0.5 mono" style="color:var(--ink-faint)"></p>
       </div>
-      <button onclick="openModal('newWalletModal')" class="stamp icon-btn" title="محفظة جديدة">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      </button>
+      <div class="flex items-center gap-2">
+        <button onclick="openCalculator()" class="stamp icon-btn" title="الآلة الحاسبة" style="background:var(--paper); border-style:solid; border-color:var(--line-strong); color:var(--ink-dim)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>
+        </button>
+        <button onclick="openModal('newWalletModal')" class="stamp icon-btn" title="محفظة جديدة">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+      </div>
     </header>
 
     <!-- wallet folder tabs -->
@@ -421,6 +434,76 @@ button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-
   </div>
 </div>
 
+<!-- floating calculator -->
+<div id="calcOverlay" class="fixed inset-0 bg-black/65 backdrop-blur-sm z-40 hidden overlay-exit" onclick="closeCalculator()"></div>
+<div id="calcModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-6" style="pointer-events:none">
+  <div class="w-full max-w-xs rounded-[1.75rem] p-5 modal-exit shadow-2xl" style="background:var(--paper-raised); border:1px solid var(--line-strong); pointer-events:auto">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-base font-bold" style="color:var(--ink)">الآلة الحاسبة</h3>
+      <button onclick="closeCalculator()" class="icon-btn" style="background:rgba(255,255,255,0.05); color:var(--ink-faint)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+    <div class="rounded-2xl p-4 mb-4 text-left" style="background:var(--paper)">
+      <p id="calcPrev" class="mono text-xs min-h-[1rem]" style="color:var(--ink-faint)">&nbsp;</p>
+      <p id="calcDisplay" class="mono text-3xl font-bold truncate" style="color:var(--ink)">0</p>
+    </div>
+    <div class="grid grid-cols-4 gap-2.5">
+      <button onclick="calcClear()" class="calc-key" style="background:var(--crimson-soft); color:var(--crimson)">C</button>
+      <button onclick="calcBackspace()" class="calc-key" style="color:var(--ink-dim)">⌫</button>
+      <button onclick="calcPercent()" class="calc-key" style="color:var(--ink-dim)">%</button>
+      <button onclick="calcOperator('/')" class="calc-key" style="background:var(--brass-soft); color:var(--brass)">÷</button>
+
+      <button onclick="calcDigit('7')" class="calc-key">7</button>
+      <button onclick="calcDigit('8')" class="calc-key">8</button>
+      <button onclick="calcDigit('9')" class="calc-key">9</button>
+      <button onclick="calcOperator('*')" class="calc-key" style="background:var(--brass-soft); color:var(--brass)">×</button>
+
+      <button onclick="calcDigit('4')" class="calc-key">4</button>
+      <button onclick="calcDigit('5')" class="calc-key">5</button>
+      <button onclick="calcDigit('6')" class="calc-key">6</button>
+      <button onclick="calcOperator('-')" class="calc-key" style="background:var(--brass-soft); color:var(--brass)">−</button>
+
+      <button onclick="calcDigit('1')" class="calc-key">1</button>
+      <button onclick="calcDigit('2')" class="calc-key">2</button>
+      <button onclick="calcDigit('3')" class="calc-key">3</button>
+      <button onclick="calcOperator('+')" class="calc-key" style="background:var(--brass-soft); color:var(--brass)">+</button>
+
+      <button onclick="calcDigit('0')" class="calc-key" style="grid-column: span 2">0</button>
+      <button onclick="calcDigit('.')" class="calc-key">.</button>
+      <button onclick="calcEquals()" class="calc-key" style="background:var(--brass); color:#1a1408">=</button>
+    </div>
+  </div>
+</div>
+
+<!-- backup modal -->
+<div id="backupModal" class="fixed inset-x-4 bottom-4 md:inset-x-auto md:w-[26rem] md:left-1/2 md:-translate-x-1/2 p-6 rounded-[1.75rem] z-50 hidden modal-exit shadow-2xl" style="background:var(--paper-raised); border:1px solid var(--line-strong)">
+  <div class="drawer-handle mb-5"></div>
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-lg font-bold" style="color:var(--ink)">النسخة الاحتياطية</h3>
+    <button onclick="closeModal('backupModal')" class="icon-btn" style="background:rgba(255,255,255,0.05); color:var(--ink-faint)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </div>
+  <div class="space-y-3">
+    <button onclick="exportBackup()" class="w-full flex items-center gap-3 p-4 rounded-2xl stamp-btn" style="background:var(--paper); border-color:rgba(75,156,124,0.35)">
+      <div class="p-2.5 rounded-xl" style="background:var(--emerald-soft); color:var(--emerald)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <div class="text-right">
+        <p class="font-bold text-sm" style="color:var(--ink)">حفظ نسخة احتياطية</p>
+        <p class="text-[11px]" style="color:var(--ink-faint)">تنزيل ملف يحتوي كل محافظك وعملياتك</p>
+      </div>
+    </button>
+    <button onclick="document.getElementById('backupFileInput').click()" class="w-full flex items-center gap-3 p-4 rounded-2xl stamp-btn" style="background:var(--paper); border-color:rgba(193,154,94,0.35)">
+      <div class="p-2.5 rounded-xl" style="background:var(--brass-soft); color:var(--brass)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="text-right">
+        <p class="font-bold text-sm" style="color:var(--ink)">استيراد نسخة احتياطية</p>
+        <p class="text-[11px]" style="color:var(--ink-faint)">استرجاع بيانات من ملف محفوظ سابقًا</p>
+      </div>
+    </button>
+    <input type="file" id="backupFileInput" accept="application/json,.json" class="hidden" onchange="importBackup(event)">
+  </div>
+</div>
+
 <div id="toast"><span class="dot"></span><span id="toastMsg"></span></div>
 
 <script>
@@ -477,7 +560,7 @@ function closeModal(id){
   }, 200);
 }
 function closeAllModals(){
-  ['newWalletModal','expenseModal','incomeModal','confirmModal'].forEach(id=>{
+  ['newWalletModal','expenseModal','incomeModal','confirmModal','backupModal'].forEach(id=>{
     if(!document.getElementById(id).classList.contains('hidden')) closeModal(id);
   });
 }
@@ -723,6 +806,152 @@ function updateUI(){
     });
   }
   document.getElementById('transCount').textContent = w.transactions.length + ' عملية';
+}
+
+/* ---------- floating calculator ---------- */
+let calcCurrent = '0';
+let calcPreviousVal = null;
+let calcOp = null;
+let calcResetNext = false;
+
+function calcRender(){
+  document.getElementById('calcDisplay').textContent = calcCurrent;
+  const opSymbols = { '+':'+', '-':'−', '*':'×', '/':'÷' };
+  document.getElementById('calcPrev').textContent = (calcPreviousVal !== null && calcOp)
+    ? `${fmt(calcPreviousVal)} ${opSymbols[calcOp]}`
+    : '\u00A0';
+}
+function openCalculator(){
+  calcCurrent = '0'; calcPreviousVal = null; calcOp = null; calcResetNext = false;
+  calcRender();
+  const overlay = document.getElementById('calcOverlay');
+  const modal = document.getElementById('calcModal');
+  overlay.classList.remove('hidden','overlay-exit','overlay-exit-active');
+  modal.classList.remove('hidden');
+  const card = modal.querySelector('div');
+  card.classList.remove('modal-exit','modal-exit-active');
+  void overlay.offsetWidth;
+  overlay.classList.add('overlay-enter','overlay-enter-active');
+  card.classList.add('modal-enter','modal-enter-active');
+  setTimeout(()=>{ overlay.classList.remove('overlay-enter'); card.classList.remove('modal-enter'); }, 10);
+}
+function closeCalculator(){
+  const overlay = document.getElementById('calcOverlay');
+  const modal = document.getElementById('calcModal');
+  const card = modal.querySelector('div');
+  overlay.classList.add('overlay-exit','overlay-exit-active');
+  card.classList.add('modal-exit','modal-exit-active');
+  setTimeout(()=>{
+    overlay.classList.add('hidden'); modal.classList.add('hidden');
+    overlay.classList.remove('overlay-exit','overlay-exit-active','overlay-enter-active');
+    card.classList.remove('modal-exit','modal-exit-active','modal-enter-active');
+  }, 200);
+}
+function calcDigit(d){
+  if(calcResetNext){ calcCurrent = '0'; calcResetNext = false; }
+  if(d === '.' && calcCurrent.includes('.')) return;
+  calcCurrent = (calcCurrent === '0' && d !== '.') ? d : calcCurrent + d;
+  calcRender();
+}
+function calcOperate(a, op, b){
+  switch(op){
+    case '+': return a + b;
+    case '-': return a - b;
+    case '*': return a * b;
+    case '/': return b === 0 ? 0 : a / b;
+  }
+}
+function calcOperator(op){
+  const val = parseFloat(calcCurrent);
+  if(calcPreviousVal !== null && calcOp && !calcResetNext){
+    calcPreviousVal = calcOperate(calcPreviousVal, calcOp, val);
+    calcCurrent = String(calcPreviousVal);
+  } else {
+    calcPreviousVal = val;
+  }
+  calcOp = op;
+  calcResetNext = true;
+  calcRender();
+}
+function calcEquals(){
+  if(calcOp === null || calcPreviousVal === null) return;
+  const val = parseFloat(calcCurrent);
+  const result = calcOperate(calcPreviousVal, calcOp, val);
+  calcCurrent = String(Math.round(result * 100000) / 100000);
+  calcPreviousVal = null;
+  calcOp = null;
+  calcResetNext = true;
+  calcRender();
+}
+function calcClear(){
+  calcCurrent = '0'; calcPreviousVal = null; calcOp = null; calcResetNext = false;
+  calcRender();
+}
+function calcBackspace(){
+  if(calcResetNext) return;
+  calcCurrent = calcCurrent.length > 1 ? calcCurrent.slice(0, -1) : '0';
+  calcRender();
+}
+function calcPercent(){
+  calcCurrent = String(parseFloat(calcCurrent) / 100);
+  calcRender();
+}
+
+/* ---------- long-press on title for backup menu ---------- */
+let longPressTimer;
+function startLongPress(){
+  longPressTimer = setTimeout(()=>{ openModal('backupModal'); }, 550);
+}
+function cancelLongPress(){
+  clearTimeout(longPressTimer);
+}
+(function bindLongPress(){
+  const title = document.getElementById('appTitle');
+  if(!title) return;
+  title.addEventListener('touchstart', startLongPress, { passive:true });
+  title.addEventListener('touchend', cancelLongPress);
+  title.addEventListener('touchmove', cancelLongPress);
+  title.addEventListener('mousedown', startLongPress);
+  title.addEventListener('mouseup', cancelLongPress);
+  title.addEventListener('mouseleave', cancelLongPress);
+})();
+
+/* ---------- backup export / import ---------- */
+function exportBackup(){
+  const payload = JSON.stringify({ wallets, currentWalletId }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `محفظتي-نسخة-احتياطية-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  closeModal('backupModal');
+  showToast('اتنزلت النسخة الاحتياطية');
+}
+function importBackup(event){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed || !Array.isArray(parsed.wallets)) throw new Error('invalid');
+      wallets = parsed.wallets;
+      currentWalletId = parsed.currentWalletId || (wallets.length ? wallets[0].id : null);
+      saveData();
+      updateUI();
+      closeModal('backupModal');
+      showToast('اترجعت النسخة الاحتياطية بنجاح');
+    }catch(e){
+      showToast('الملف مش صالح، جرّب ملف نسخة احتياطية تاني');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 loadData();
