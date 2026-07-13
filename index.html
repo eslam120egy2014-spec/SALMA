@@ -580,6 +580,30 @@ async function loadData(){
   }catch(e){
     console.error('تعذّر قراءة البيانات المحفوظة', e);
   }
+
+  // ترحيل: أي محفظة قديمة عندها "ميزانية مبدئية" منفصلة عن سجل العمليات
+  // بنحوّلها لعملية "رصيد ابتدائي" جوه السجل نفسه، عشان الرقم يبان
+  // كعملية واضحة وميتضاعفش في أي حساب لاحق.
+  let migrated = false;
+  wallets.forEach(w=>{
+    if(!Array.isArray(w.transactions)) w.transactions = [];
+    if(typeof w.baseAmount === 'number' && w.baseAmount > 0){
+      const earliestDate = w.transactions.length
+        ? new Date(new Date(w.transactions[0].date).getTime() - 1000).toISOString()
+        : new Date().toISOString();
+      w.transactions.unshift({
+        id: 'init-' + w.id,
+        type: 'income',
+        amount: w.baseAmount,
+        desc: 'رصيد ابتدائي',
+        date: earliestDate
+      });
+      w.baseAmount = 0;
+      migrated = true;
+    }
+  });
+  if(migrated) saveData();
+
   document.getElementById('loadingState').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
   const dateEl = document.getElementById('todayDate');
@@ -677,7 +701,19 @@ function handleCreateWallet(){
   if(!name){ document.getElementById('walletNameErr').textContent = 'محتاج اسم للمحفظة'; ok=false; }
   if(isNaN(amount) || amount < 0){ document.getElementById('walletAmountErr').textContent = 'اكتب مبلغ صحيح'; ok=false; }
   if(!ok) return;
-  const newWallet = { id: Date.now().toString(), name, baseAmount: amount, transactions: [] };
+  // الرصيد المبدئي بقى بيتسجّل كعملية "إضافة رصيد" جوه سجل العمليات
+  // بدل ما يكون رقم مستقل (baseAmount)، عشان يبان في السجل ومتفضلش
+  // في احتمال يتضاعف أو يتحسب مرتين في أي مكان تاني.
+  const newWallet = { id: Date.now().toString(), name, baseAmount: 0, transactions: [] };
+  if(amount > 0){
+    newWallet.transactions.push({
+      id: 'init-' + newWallet.id,
+      type: 'income',
+      amount,
+      desc: 'رصيد ابتدائي',
+      date: new Date().toISOString()
+    });
+  }
   wallets.push(newWallet);
   currentWalletId = newWallet.id;
   saveData();
