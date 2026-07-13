@@ -510,18 +510,19 @@ button:hover .stamp, .stamp:hover{ transform: rotate(-4deg) scale(1.04); border-
 let wallets = [];
 let currentWalletId = null;
 let pendingDeleteWalletId = null;
+const STORAGE_KEY = 'wallet-app-state';
 const fmt = (num) => { if(!isFinite(num)) num = 0; return new Intl.NumberFormat('en-US', {maximumFractionDigits:2}).format(num); };
 
 async function loadData(){
   try{
-    const res = await window.storage.get('wallet-app-state');
-    if(res && res.value){
-      const parsed = JSON.parse(res.value);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
       wallets = parsed.wallets || [];
       currentWalletId = parsed.currentWalletId || null;
     }
   }catch(e){
-    // no saved data yet, start fresh
+    console.error('تعذّر قراءة البيانات المحفوظة', e);
   }
   document.getElementById('loadingState').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
@@ -532,9 +533,10 @@ async function loadData(){
 
 async function saveData(){
   try{
-    await window.storage.set('wallet-app-state', JSON.stringify({ wallets, currentWalletId }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ wallets, currentWalletId }));
   }catch(e){
     console.error('تعذّر حفظ البيانات', e);
+    showToast('تعذّر حفظ البيانات على الجهاز');
   }
 }
 
